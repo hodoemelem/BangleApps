@@ -167,8 +167,8 @@ function showSaveMenu() {
     menu["Recording "+i+(exists?" *":"")] = function() {
       var csv = "";
       for (var i=0;i<SAMPLES;i++)
-        //csv += `${accelx[i]/SCALE},${accely[i]/SCALE},${accelz[i]/SCALE}\n`;
-        csv += `${accelx[i]},${accely[i]},${accelz[i]}\n`;
+        csv += `${accelx[i]/SCALE},${accely[i]/SCALE},${accelz[i]/SCALE}\n`;
+        //csv += `${accelx[i]},${accely[i]},${accelz[i]}\n`;
       require("Storage").write(fn,csv);
       showMenu();
     };
