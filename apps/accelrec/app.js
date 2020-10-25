@@ -162,8 +162,8 @@ function showSaveMenu() {
     "" : { title : "Save" }
   };
   [1,2,3,4,5,6].forEach(i=>{
-    var fn = "accelrec."+i+".csv";
-    //var fn = "accelrec."+i+".txt";
+    //var fn = "accelrec."+i+".csv";
+    var fn = "accelrec."+i+".txt";
     var exists = require("Storage").read(fn)!==undefined;
     menu["Recording "+i+(exists?" *":"")] = function() {
       var csv = "";
