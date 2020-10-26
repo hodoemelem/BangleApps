@@ -3,11 +3,24 @@ var HZ = 100;
 var SAMPLES = 5*HZ; // 5 seconds
 var SCALE = 5000;
 var THRESH = 1.04;
-var accelx = new Int16Array(SAMPLES);
-var accely = new Int16Array(SAMPLES); // North
-var accelz = new Int16Array(SAMPLES); // Into clock face
+var accelxl = new Uint8Array(SAMPLES);
+var accelxh = new Uint8Array(SAMPLES);
+
+var accelyl = new Uint8Array(SAMPLES); // North
+var accelyh = new Uint8Array(SAMPLES); // North
+
+var accelzl = new Uint8Array(SAMPLES); // Into clock face
+var accelzh = new Uint8Array(SAMPLES); // Into clock face
+//var accelx = new Float32Array(SAMPLES);
+//var accely = new Float32Array(SAMPLES); // North
+//var accelz = new Float32Array(SAMPLES); // Into clock face
+var b = new Uint8Array(SAMPLES*6);
+var j = 0;
+
 var accelIdx = 0;
 var lastAccel;
+var zl=0;
+var zh = 0;
 function accelHandlerTrigger(a) {"ram"
   if (a.mag*2>THRESH) { // *2 because 8g mode
     tStart = getTime();
@@ -23,15 +36,31 @@ function accelHandlerTrigger(a) {"ram"
 }
 function accelHandlerRecord(a) {"ram"
   var i = accelIdx++;
-  accelx[i] = a.x*SCALE*2;
-  accely[i] = -a.y*SCALE*2;
-  accelz[i] = a.z*SCALE*2;
+
+  accelxl[i] = Bangle.accelRd(0x06);
+  accelxh[i] = Bangle.accelRd(0x07);
+  accelyl[i] = Bangle.accelRd(0x08);
+  accelyh[i] = Bangle.accelRd(0x09);
+  accelzl[i] = Bangle.accelRd(0x0A);
+  accelzh[i] = Bangle.accelRd(0x0B);
+  
+/*
+     b[j] = Bangle.accelRd(0x06);
+   b[j+1] = Bangle.accelRd(0x07);
+   b[j+2] = Bangle.accelRd(0x08);
+   b[j+3] = Bangle.accelRd(0x09);
+   b[j+4] = Bangle.accelRd(0x0A);
+   b[j+5] = Bangle.accelRd(0x0B);
+   j =j+6;
+*/
+                                
   if (accelIdx>=SAMPLES) recordStop();
 }
 function recordStart() {"ram"
   Bangle.setLCDTimeout(0); // force LCD on
   accelIdx = 0;
-  lastAccel = [];
+  j = 0;
+  lastAccel = [];                     
   Bangle.accelWr(0x18,0b01110100); // off, +-8g
   Bangle.accelWr(0x1B,0x03 | 0x40); // 100hz output, ODR/2 filter
   Bangle.accelWr(0x18,0b11110100); // +-8g
@@ -52,7 +81,12 @@ function recordStop() {"ram"
   Bangle.accelWr(0x18,0b11101100); // +-4g
   Bangle.removeListener('accel',accelHandlerRecord);
   E.showMessage("Finished");
-  showData();
+                       
+   setWatch(function() {
+    showMenu();
+  }, BTN2);
+  //showData();
+
 }
 
 
@@ -161,28 +195,74 @@ function showSaveMenu() {
   var menu = {
     "" : { title : "Save" }
   };
-  [1,2,3,4,5,6].forEach(i=>{
-    var fn = "accelrec."+i+".csv";
-    //var fn = "accelrec."+i+".txt";
+  //[1,2,3,4,5,6].forEach(i=>{
+    //var fn = "accelrec."+i+".csv";
+  
+	var fn = "Adata"+".txt";
     var exists = require("Storage").read(fn)!==undefined;
-    menu["Recording "+i+(exists?" *":"")] = function() {
-      var csv = "";
+    menu["Recording "+(exists?" *":"")] = function() {
+     
+      //var csv = "";
+      
+      /*
       for (var i=0;i<SAMPLES;i++)
-        //csv += `${accelx[i]/SCALE},${accely[i]/SCALE},${accelz[i]/SCALE}\n`;
-        csv += `${accelx[i]},${accely[i]},${accelz[i]}\n`;
-      require("Storage").write(fn,csv);
+        //csv += `${accelxl[i]},${accelxh[i]},${accelyl[i]},`;
+        //csv += `${accelyh[i]},${accelzl[i]},${accelzh[i]}\n`;
+        csv += `${accelxl[i]},${accelxh[i]},${accelyl[i]},${accelyh[i]},${accelzl[i]},${accelzh[i]}\n`;
+        csv += `${accelxl[i]},${accelxh[i]},${accelyl[i]},${accelyh[i]},${accelzl[i]},${accelzh[i]}\n`;
+      */
+   
+var b = new Uint8Array(SAMPLES*6);
+j = 0;
+for (var i = 0;i <SAMPLES;i++) {
+     b[j] = accelxl[i];
+   b[j+1] = accelxh[i];
+   b[j+2] = accelyl[i];
+   b[j+3] = accelyh[i];
+   b[j+4] = accelzl[i];
+   b[j+5] = accelzh[i];
+   j =j+6;
+}
+    
+    //  require("Storage").write(fn,csv);
+    require("Storage").write(fn, b);
+      
+      
+      
+      /*
+    var fs = require('Storage');
+
+var foo = "71%73%70%56%57%97%50%01%50";
+//%0%247%0%0%150%140%115%102%94%69%198%187%159%123%114%90%71%71%71%138%129%101%202%193%166%201%193%172%238%234%221%200%197%188%140";
+var bytes = foo.split("%");
+var b = new Int16Array(bytes.length);
+var c = "";
+for (var i = 0;i < bytes.length;i++) {
+    b[i] = bytes[i];
+    //c = c+ bytes[i];
+}
+
+fs.write("test.txt",b,"hex", function(err) {
+    if(err) {
+        //console.log(err);
+    } else {
+       // console.log("The file was saved!");
+    }
+});
+      */
+    
+      
+      
+      
+      
       showMenu();
     };
-  });
+  //});
   menu["< Back"] = function() {showMenu();};
   E.showMenu(menu);
 }
 
 showMenu();
-
-
-
-
 
 
 
