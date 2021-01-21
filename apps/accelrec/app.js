@@ -1,471 +1,159 @@
-var acc;
-var HZ = 100;
-var SAMPLES = 5*HZ; // 5 seconds
-var SCALE = 5000;
-var THRESH = 1.04;
-var accelxl = new Uint8Array(SAMPLES);
-var accelxh = new Uint8Array(SAMPLES);
-
-var accelyl = new Uint8Array(SAMPLES); // North
-var accelyh = new Uint8Array(SAMPLES); // North
-
-var accelzl = new Uint8Array(SAMPLES); // Into clock face
-var accelzh = new Uint8Array(SAMPLES); // Into clock face
-//var accelx = new Float32Array(SAMPLES);
-//var accely = new Float32Array(SAMPLES); // North
-//var accelz = new Float32Array(SAMPLES); // Into clock face
-var b = new Uint8Array(SAMPLES*6);
-var j = 0;
-
-var accelIdx = 0;
-var lastAccel;
-var zl=0;
-var zh = 0;
-function accelHandlerTrigger(a) {"ram"
-  if (a.mag*2>THRESH) { // *2 because 8g mode
-    tStart = getTime();
-    g.drawString("Recording",g.getWidth()/2,g.getHeight()/2,1);
-    Bangle.removeListener('accel',accelHandlerTrigger);
-    Bangle.on('accel',accelHandlerRecord);
-    lastAccel.forEach(accelHandlerRecord);
-    accelHandlerRecord(a);
-  } else {
-    if (lastAccel.length>10) lastAccel.shift();
-    lastAccel.push(a);
-  }
-}
-function accelHandlerRecord(a) {"ram"
-  var i = accelIdx++;
-
-  accelxl[i] = Bangle.accelRd(0x06);
-  accelxh[i] = Bangle.accelRd(0x07);
-  accelyl[i] = Bangle.accelRd(0x08);
-  accelyh[i] = Bangle.accelRd(0x09);
-  accelzl[i] = Bangle.accelRd(0x0A);
-  accelzh[i] = Bangle.accelRd(0x0B);
-  
-/*
-     b[j] = Bangle.accelRd(0x06);
-   b[j+1] = Bangle.accelRd(0x07);
-   b[j+2] = Bangle.accelRd(0x08);
-   b[j+3] = Bangle.accelRd(0x09);
-   b[j+4] = Bangle.accelRd(0x0A);
-   b[j+5] = Bangle.accelRd(0x0B);
-   j =j+6;
-*/
-                                
-  if (accelIdx>=SAMPLES) recordStop();
-}
-function recordStart() {"ram"
-  Bangle.setLCDTimeout(0); // force LCD on
-  accelIdx = 0;
-  j = 0;
-  lastAccel = [];                     
-  Bangle.accelWr(0x18,0b01110100); // off, +-8g
-  Bangle.accelWr(0x1B,0x03 | 0x40); // 100hz output, ODR/2 filter
-  Bangle.accelWr(0x18,0b11110100); // +-8g
-  Bangle.setPollInterval(10); // 100hz input
-  setTimeout(function() {
-    Bangle.on('accel',accelHandlerTrigger);
-    g.clear(1).setFont("6x8",2).setFontAlign(0,0);
-    g.drawString("Waiting",g.getWidth()/2,g.getHeight()/2);
-  }, 200);
-}
-
-
-function recordStop() {"ram"
-  //console.log("Length:",getTime()-tStart);
-  Bangle.setPollInterval(80); // default poll interval
-  Bangle.accelWr(0x18,0b01101100); // off, +-4g
-  Bangle.accelWr(0x1B,0x0); // default 12.5hz output
-  Bangle.accelWr(0x18,0b11101100); // +-4g
-  Bangle.removeListener('accel',accelHandlerRecord);
-  E.showMessage("Finished");
-                       
-   setWatch(function() {
-    showMenu();
-  }, BTN2);
-  //showData();
-
-}
-
-
-function showData() {
-  g.clear(1);
-  var w = g.getWidth()-20; // width
-  var m = g.getHeight()/2; // middle
-  var s = 12; // how many pixels per G
-  g.fillRect(9,0,9,g.getHeight());
-  g.setFontAlign(0,0);
-  for (var l=-8;l<=8;l++)
-    g.drawString(l, 5, m - l*s);
-
-  function plot(a) {
-    g.moveTo(10,m - a[0]*s/SCALE);
-    for (var i=0;i<SAMPLES;i++)
-      g.lineTo(10+i*w/SAMPLES, m - a[i]*s/SCALE);
-  }
-  g.setColor("#0000ff");
-  plot(accelz);
-  g.setColor("#ff0000");
-  plot(accelx);
-  g.setColor("#00ff00");
-  plot(accely);
-
-  // work out stats
-  var maxAccel = 0;
-  var tStart = SAMPLES, tEnd = 0;
-  var vel = 0, maxVel = 0;
-  for (var i=0;i<SAMPLES;i++) {
-    var a = accely[i]/SCALE;
-    if (a>0.1) {
-      if (i<tStart) tStart=i;
-      if (i>tEnd) tEnd=i;
-    }
-    if (a>maxAccel) maxAccel=a;
-    vel += a/HZ;
-    if (vel>maxVel) maxVel=vel;
-  }
-  g.reset();
-  g.setFont("6x8").setFontAlign(1,0);
-  g.drawString("Max Y Accel: "+maxAccel.toFixed(2)+" g",g.getWidth()-14,g.getHeight()-50);
-  g.drawString("Max Y Vel: "+maxVel.toFixed(2)+" m/s",g.getWidth()-14,g.getHeight()-40);
-  g.drawString("Time moving: "+(tEnd-tStart)/HZ+" s",g.getWidth()-14,g.getHeight()-30);
-  //console.log("End Velocity "+vel);
-  g.setFont("6x8").setFontAlign(0,0,1);
-  g.drawString("FINISH",g.getWidth()-4,g.getHeight()/2);
-  setWatch(function() {
-    showMenu();
-  }, BTN2);
-}
-
-function showBig(txt) {
-  g.clear(1);
-  g.setFontVector(80).setFontAlign(0,0);
-  g.drawString(txt,g.getWidth()/2, g.getHeight()/2);
-  g.flip();
-}
-
-function countDown() {
-  showBig(3);
-  setTimeout(function() {
-    showBig(2);
-    setTimeout(function() {
-      showBig(1);
-      setTimeout(function() {
-        recordStart();
-      }, 800);
-    }, 1000);
-  }, 1000);
-}
-
-function showMenu() {
-  Bangle.setLCDTimeout(10); // set timeout for LCD in menu
-  var menu = {
-    "" : { title : "Acceleration Rec" },
-    "Start" : function() {
-      E.showMenu();
-      if (accelIdx==0) countDown();
-      else E.showPrompt("Overwrite Recording?").then(ok=>{
-        if (ok) countDown(); else showMenu();
-      });
-    },
-    "Plot" : function() {
-      E.showMenu();
-      if (accelIdx) showData();
-      else E.showAlert("No Data").then(()=>{
-        showMenu();
-      });
-    },
-    "Save" : function() {
-      E.showMenu();
-      if (accelIdx) showSaveMenu();
-      else E.showAlert("No Data").then(()=>{
-        showMenu();
-      });
-    },
-    "Exit" : function() {
-      load();
-    },
+ var connected = false;
+var started = 0;
+var count = 0;
+var filename = "Adata"+".bin";
+var SAMPLES = 50;
+var b = new Uint8Array(SAMPLES *6 ); 
+var getData = 1;
+var accelIdx = 0;   
+var numSamples = 0;
+var stop =0;
+var datalen =0;
+//Service to Advertise 
+ options = {
+      advertise: ['4faf0001-1fb5-459e-8fcc-c5c9c331914b'],
+      uart: false,
   };
-  E.showMenu(menu);
-}
 
-function showSaveMenu() {
-  var menu = {
-    "" : { title : "Save" }
-  };
-  //[1,2,3,4,5,6].forEach(i=>{
-    //var fn = "accelrec."+i+".csv";
-  
-	var fn = "Adata"+".txt";
-    var exists = require("Storage").read(fn)!==undefined;
-    menu["Recording "+(exists?" *":"")] = function() {
+function onAccel(a) {
+  if (connected) {
+
+	  started = 1;
+    LED1.set(); //red led on when conneted to BLE
+    
+    
+	  if(getData){//Show this when reading
+		 g.clear(1).setFont("6x8",2).setFontAlign(0,0);
+         g.drawString("Reading...",g.getWidth()/2,g.getHeight()/2);
+	  }
+    
+	  getData = 0;
+	
+	   b[accelIdx+0] = Bangle.accelRd(0x06,1);
+  b[accelIdx+1] =  Bangle.accelRd(0x07,1);
+  b[accelIdx+2] =  Bangle.accelRd(0x08,1);
+  b[accelIdx+3] =  Bangle.accelRd(0x09,1);
+  b[accelIdx+4] =  Bangle.accelRd(0x0A,1);
+  b[accelIdx+5] =  Bangle.accelRd(0x0B,1);
+  accelIdx =accelIdx+6;
+	
+	  
+	   numSamples++;
+ 
+   //if (stop ==1){resetService();} //uncomment to do recording only one time
+    
+     if(numSamples>=SAMPLES ){
+       
+		 accelIdx=0;
+         numSamples=0;
+       
+		 g.clear(1).setFont("6x8",2).setFontAlign(0,0);
+         g.drawString("Write to Flash",g.getWidth()/2,g.getHeight()/2);
+		 
+	      require("Storage").write(filename, b,0);
      
-      //var csv = "";
-      
-      /*
-      for (var i=0;i<SAMPLES;i++)
-        //csv += `${accelxl[i]},${accelxh[i]},${accelyl[i]},`;
-        //csv += `${accelyh[i]},${accelzl[i]},${accelzh[i]}\n`;
-        csv += `${accelxl[i]},${accelxh[i]},${accelyl[i]},${accelyh[i]},${accelzl[i]},${accelzh[i]}\n`;
-        csv += `${accelxl[i]},${accelxh[i]},${accelyl[i]},${accelyh[i]},${accelzl[i]},${accelzh[i]}\n`;
-      */
-   
-var b = new Uint8Array(SAMPLES*6);
-j = 0;
-for (var i = 0;i <SAMPLES;i++) {
-     b[j] = accelxl[i];
-   b[j+1] = accelxh[i];
-   b[j+2] = accelyl[i];
-   b[j+3] = accelyh[i];
-   b[j+4] = accelzl[i];
-   b[j+5] = accelzh[i];
-   j =j+6;
-}
+		 uploadToweb(); // Upload Data to Web
+         getData = 1;
+	 
+	 }
     
-    //  require("Storage").write(fn,csv);
-    require("Storage").write(fn, b);
-      
-      
-      
-      /*
-    var fs = require('Storage');
-
-var foo = "71%73%70%56%57%97%50%01%50";
-//%0%247%0%0%150%140%115%102%94%69%198%187%159%123%114%90%71%71%71%138%129%101%202%193%166%201%193%172%238%234%221%200%197%188%140";
-var bytes = foo.split("%");
-var b = new Int16Array(bytes.length);
-var c = "";
-for (var i = 0;i < bytes.length;i++) {
-    b[i] = bytes[i];
-    //c = c+ bytes[i];
+     
+	 
+  }
 }
 
-fs.write("test.txt",b,"hex", function(err) {
-    if(err) {
-        //console.log(err);
-    } else {
-       // console.log("The file was saved!");
-    }
-});
-      */
+function uploadToweb()//Seems Espruino only allows 20 Bytes of Data to be sent at a time.
+{
+  
+       
+       //Send Data from flash to web in blocks of 20 Bytes at a time
+	   for (var i=0; i<SAMPLES*6; i=i+20) {
+	   var mydata = require("Storage").read(filename,i,20);
+	   
+       
+	    NRF.updateServices({
+          '4faf0001-1fb5-459e-8fcc-c5c9c331914b': {
+          '4faf0002-1fb5-459e-8fcc-c5c9c331914b': {
+          value: mydata,
+          notify: true,
+          maxLen : 20,
+          
+          }
+        }
+        })
+		 
+		   
     
-      
-      
-      
-      
-      showMenu();
-    };
-  //});
-  menu["< Back"] = function() {showMenu();};
-  E.showMenu(menu);
+		 g.clear(1).setFont("6x8",2).setFontAlign(0,0);
+         g.drawString(mydata,g.getWidth()/2,g.getHeight()/2);
+		   
+	   }
+
+	   
+       //Code block to signify end of Actual Data
+	   mydata = "StOpBaNgLeJsNoW";
+	   NRF.updateServices({
+          '4faf0001-1fb5-459e-8fcc-c5c9c331914b': {
+          '4faf0002-1fb5-459e-8fcc-c5c9c331914b': {
+          value: mydata,
+          notify: true,
+          maxLen : 15,
+          
+          }
+        }
+        })
+	   
+	   
+	   g.clear(1).setFont("6x8",2).setFontAlign(0,0);
+       g.drawString(mydata,g.getWidth()/2,g.getHeight()/2);
+	   
+     stop =1;
+		
+}
+  
+function resetService()
+{
+  //Restart BangleJS
+  if(started ==1)
+     {
+     
+      reset();
+	  E.reboot();
+	  E.setBootCode();
+     }
+	
+	
 }
 
-showMenu();
+function onInit() {
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-var acc;
-var HZ = 100;
-var SAMPLES = 5*HZ; // 5 seconds
-var SCALE = 5000;
-var THRESH = 1.04;
-var accelx = new Int16Array(SAMPLES);
-var accely = new Int16Array(SAMPLES); // North
-var accelz = new Int16Array(SAMPLES); // Into clock face
-var accelIdx = 0;
-var lastAccel;
-function accelHandlerTrigger(a) {"ram"
-  if (a.mag*2>THRESH) { // *2 because 8g mode
-    tStart = getTime();
-    g.drawString("Recording",g.getWidth()/2,g.getHeight()/2,1);
-    Bangle.removeListener('accel',accelHandlerTrigger);
-    Bangle.on('accel',accelHandlerRecord);
-    lastAccel.forEach(accelHandlerRecord);
-    accelHandlerRecord(a);
-  } else {
-    if (lastAccel.length>10) lastAccel.shift();
-    lastAccel.push(a);
-  }
-}
-function accelHandlerRecord(a) {"ram"
-  var i = accelIdx++;
-  accelx[i] = a.x*SCALE*2;
-  accely[i] = -a.y*SCALE*2;
-  accelz[i] = a.z*SCALE*2;
-  if (accelIdx>=SAMPLES) recordStop();
-}
-function recordStart() {"ram"
-  Bangle.setLCDTimeout(0); // force LCD on
-  accelIdx = 0;
-  lastAccel = [];
-  Bangle.accelWr(0x18,0b01110100); // off, +-8g
-  Bangle.accelWr(0x1B,0x03 | 0x40); // 100hz output, ODR/2 filter
-  Bangle.accelWr(0x18,0b11110100); // +-8g
-  Bangle.setPollInterval(10); // 100hz input
-  setTimeout(function() {
-    Bangle.on('accel',accelHandlerTrigger);
-    g.clear(1).setFont("6x8",2).setFontAlign(0,0);
-    g.drawString("Waiting",g.getWidth()/2,g.getHeight()/2);
-  }, 200);
-}
-
-
-function recordStop() {"ram"
-  //console.log("Length:",getTime()-tStart);
-  Bangle.setPollInterval(80); // default poll interval
-  Bangle.accelWr(0x18,0b01101100); // off, +-4g
-  Bangle.accelWr(0x1B,0x0); // default 12.5hz output
-  Bangle.accelWr(0x18,0b11101100); // +-4g
-  Bangle.removeListener('accel',accelHandlerRecord);
-  E.showMessage("Finished");
-  showData();
-}
-
-
-function showData() {
-  g.clear(1);
-  var w = g.getWidth()-20; // width
-  var m = g.getHeight()/2; // middle
-  var s = 12; // how many pixels per G
-  g.fillRect(9,0,9,g.getHeight());
-  g.setFontAlign(0,0);
-  for (var l=-8;l<=8;l++)
-    g.drawString(l, 5, m - l*s);
-
-  function plot(a) {
-    g.moveTo(10,m - a[0]*s/SCALE);
-    for (var i=0;i<SAMPLES;i++)
-      g.lineTo(10+i*w/SAMPLES, m - a[i]*s/SCALE);
-  }
-  g.setColor("#0000ff");
-  plot(accelz);
-  g.setColor("#ff0000");
-  plot(accelx);
-  g.setColor("#00ff00");
-  plot(accely);
-
-  // work out stats
-  var maxAccel = 0;
-  var tStart = SAMPLES, tEnd = 0;
-  var vel = 0, maxVel = 0;
-  for (var i=0;i<SAMPLES;i++) {
-    var a = accely[i]/SCALE;
-    if (a>0.1) {
-      if (i<tStart) tStart=i;
-      if (i>tEnd) tEnd=i;
-    }
-    if (a>maxAccel) maxAccel=a;
-    vel += a/HZ;
-    if (vel>maxVel) maxVel=vel;
-  }
-  g.reset();
-  g.setFont("6x8").setFontAlign(1,0);
-  g.drawString("Max Y Accel: "+maxAccel.toFixed(2)+" g",g.getWidth()-14,g.getHeight()-50);
-  g.drawString("Max Y Vel: "+maxVel.toFixed(2)+" m/s",g.getWidth()-14,g.getHeight()-40);
-  g.drawString("Time moving: "+(tEnd-tStart)/HZ+" s",g.getWidth()-14,g.getHeight()-30);
-  //console.log("End Velocity "+vel);
-  g.setFont("6x8").setFontAlign(0,0,1);
-  g.drawString("FINISH",g.getWidth()-4,g.getHeight()/2);
-  setWatch(function() {
-    showMenu();
-  }, BTN2);
-}
-
-function showBig(txt) {
-  g.clear(1);
-  g.setFontVector(80).setFontAlign(0,0);
-  g.drawString(txt,g.getWidth()/2, g.getHeight()/2);
-  g.flip();
-}
-
-function countDown() {
-  showBig(3);
-  setTimeout(function() {
-    showBig(2);
-    setTimeout(function() {
-      showBig(1);
-      setTimeout(function() {
-        recordStart();
-      }, 800);
-    }, 1000);
-  }, 1000);
-}
-
-function showMenu() {
-  Bangle.setLCDTimeout(10); // set timeout for LCD in menu
-  var menu = {
-    "" : { title : "Acceleration Rec" },
-    "Start" : function() {
-      E.showMenu();
-      if (accelIdx==0) countDown();
-      else E.showPrompt("Overwrite Recording?").then(ok=>{
-        if (ok) countDown(); else showMenu();
-      });
+  NRF.on('connect', function () { connected = true; Bangle.setCompassPower(1); })
+  NRF.on('disconnect', function () { connected = false; Bangle.setCompassPower(0); })
+  NRF.on('disconnect', function () { connected = false; resetService(); })
+  
+  // declare the services
+  NRF.setServices({
+     '4faf0001-1fb5-459e-8fcc-c5c9c331914b': {
+       '4faf0002-1fb5-459e-8fcc-c5c9c331914b': {
+        value: "0",
+        maxLen : 20,
+        notify: true,
+        readable: true,
+       
+      }
     },
-    "Plot" : function() {
-      E.showMenu();
-      if (accelIdx) showData();
-      else E.showAlert("No Data").then(()=>{
-        showMenu();
-      });
-    },
-    "Save" : function() {
-      E.showMenu();
-      if (accelIdx) showSaveMenu();
-      else E.showAlert("No Data").then(()=>{
-        showMenu();
-      });
-    },
-    "Exit" : function() {
-      load();
-    },
-  };
-  E.showMenu(menu);
+  
+  }, options)
+
+
+  
+  Bangle.on('accel', onAccel)
+
 }
 
-function showSaveMenu() {
-  var menu = {
-    "" : { title : "Save" }
-  };
-  [1,2,3,4,5,6].forEach(i=>{
-    var fn = "accelrec."+i+".csv";
-    var exists = require("Storage").read(fn)!==undefined;
-    menu["Recording "+i+(exists?" *":"")] = function() {
-      var csv = "";
-      for (var i=0;i<SAMPLES;i++)
-        csv += `${accelx[i]/SCALE},${accely[i]/SCALE},${accelz[i]/SCALE}\n`;
-      require("Storage").write(fn,csv);
-      showMenu();
-    };
-  });
-  menu["< Back"] = function() {showMenu();};
-  E.showMenu(menu);
-}
 
-showMenu();
-*/
+ onInit();
+
+
+
+
