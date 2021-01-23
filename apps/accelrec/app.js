@@ -141,10 +141,10 @@ function resetService()
 		 
 		 )
          
-	      reset();
-	     /*
+	     // reset();
+	     
 	  E.reboot();
-	  */
+	  
      }
 	
 	
