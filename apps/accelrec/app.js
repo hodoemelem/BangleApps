@@ -116,24 +116,34 @@ function resetService()
   //Restart BangleJS
   if(started ==1)
      {
-	    /*
+	     // dummy services
+	     options = {
+	      advertise: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e'],
+	      uart: true,
+	  };
          // dummy services
 	      NRF.setServices({
-		 '4faf0023-1fb5-459e-8fcc-c5c9c331914b': {
-		   '4faf0024-1fb5-459e-8fcc-c5c9c331914b': {
+		 '6e400001-b5a3-f393-e0a9-e50e24dcca9e': {
+		   '6e400002-b5a3-f393-e0a9-e50e24dcca9e': {
 		    value: "0",
-		    maxLen : 20,
+	            description: "UART RX Characteristic",
+		    writable : true,
+
+		  }
+		},
+		'6e400003-b5a3-f393-e0a9-e50e24dcca9e': {
+		    value: "0",
+	            description: "UART TX Characteristic",
 		    notify: true,
 		    readable: true,
 
 		  }
 		},
 
-	      })
-
+	      }, options)
+         /*
 	      reset();
 	  E.reboot();
-	  E.setBootCode();
 	  */
      }
 	
