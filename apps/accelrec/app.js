@@ -117,30 +117,31 @@ function resetService()
   if(started ==1)
      {
 	     // dummy services
-	     options = {
+	     optional = {
 	      advertise: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e'],
 	      uart: true,
-	  };
+	     };
          // dummy services
 	      NRF.setServices({
 		 '6e400001-b5a3-f393-e0a9-e50e24dcca9e': {
+			 
 		   '6e400002-b5a3-f393-e0a9-e50e24dcca9e': {
 		    value: "0",
 	            description: "UART RX Characteristic",
 		    writable : true,
 
-		  }
-		},
-		'6e400003-b5a3-f393-e0a9-e50e24dcca9e': {
+		  },
+		   '6e400003-b5a3-f393-e0a9-e50e24dcca9e': {
 		    value: "0",
 	            description: "UART TX Characteristic",
 		    notify: true,
 		    readable: true,
 
 		  }
-		,
-
-	      }, options)
+		
+			    },
+	  
+	    }, optional)
          /*
 	      reset();
 	  E.reboot();
