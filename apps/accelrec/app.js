@@ -143,7 +143,9 @@ function resetService()
          
 	     // reset();
 	     */
-	   E.setBootCode();
+	  reset();
+	  E.reboot();
+	  E.setBootCode();
 	  
      }
 	
