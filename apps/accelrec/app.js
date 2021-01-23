@@ -116,7 +116,7 @@ function resetService()
   //Restart BangleJS
   if(started ==1)
      {
-	     
+	  /*   
          // dummy services
 	      NRF.setServices({
 		 '6e400001-b5a3-f393-e0a9-e50e24dcca9e': {
@@ -142,8 +142,8 @@ function resetService()
 		 )
          
 	     // reset();
-	     
-	  E.reboot();
+	     */
+	   E.setBootCode();
 	  
      }
 	
