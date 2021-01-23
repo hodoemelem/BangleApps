@@ -116,11 +116,7 @@ function resetService()
   //Restart BangleJS
   if(started ==1)
      {
-	     // dummy services
-	     optional = {
-	      advertise: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e'],
-	      uart: true,
-	     };
+	     
          // dummy services
 	      NRF.setServices({
 		 '6e400001-b5a3-f393-e0a9-e50e24dcca9e': {
@@ -141,7 +137,9 @@ function resetService()
 		
 			    },
 	  
-	    }, optional)
+	    }, { advertise: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e']}
+		 
+		 )
          /*
 	      reset();
 	  E.reboot();
