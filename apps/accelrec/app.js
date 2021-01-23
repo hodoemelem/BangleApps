@@ -138,7 +138,7 @@ function resetService()
 		    readable: true,
 
 		  }
-		},
+		,
 
 	      }, options)
          /*
@@ -172,7 +172,7 @@ function onInit() {
 
 
   g.clear(1).setFont("6x8",2).setFontAlign(0,0);
-  g.drawString("Connect to BLE",g.getWidth()/2,g.getHeight()/2);
+  g.drawString("Connect to Activate",g.getWidth()/2,g.getHeight()/2);
   Bangle.on('accel', onAccel)
 
 }
