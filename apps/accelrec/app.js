@@ -552,7 +552,7 @@ function startActivate() {
   g.fillRect(111,0,129,100).setColor(0, 0, 0);
   g.fillPoly([130,0,130,83,240,0]).setColor(1,1,1).flip();
   setTimeout(recordStart,3500);
-  NRF.disconnect();
+  //NRF.disconnect();
 }
 
 // start our app:
